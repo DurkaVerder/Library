@@ -18,6 +18,10 @@ type Book struct {
 	Author  string `json:"author"`
 }
 
+type TypeSort struct {
+	NameSort string `json:"sort"`
+}
+
 var db *sql.DB
 
 func main() {
@@ -25,6 +29,7 @@ func main() {
 	defer db.Close()
 
 	startServer()
+
 }
 
 func initDataBase() {
@@ -37,17 +42,19 @@ func initDataBase() {
 	if err = db.Ping(); err != nil {
 		log.Fatal("Error connecting database: ", err)
 	}
+
 }
 
 func startServer() {
-	port := "8080"
+	port := ":8080"
 	http.HandleFunc("/books", handleRequest)
 	http.HandleFunc("/book/", handleRequestWithId)
-	http.HandleFunc("/books/sort/", handleRequestSort)
+	http.HandleFunc("/books/sort", handleRequestSort)
 	log.Println("Starting server")
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("Error starting server: ", err)
 	}
+
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
@@ -60,6 +67,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 }
 
 func handleRequestWithId(w http.ResponseWriter, r *http.Request) {
@@ -83,19 +91,15 @@ func handleRequestWithId(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRequestSort(w http.ResponseWriter, r *http.Request) {
-	form := r.URL.Path[len("/books/sort/")]
 
-	switch string(form) {
-	case "author":
-		sortBooksAuthor(w)
-
-	case "details":
-		sortBooksDetails(w)
-
+	switch r.Method {
+	case http.MethodPost:
+		sortBooks(w, r)
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 }
 
 func getBooks(w http.ResponseWriter) {
@@ -121,6 +125,7 @@ func getBooks(w http.ResponseWriter) {
 
 	json.NewEncoder(w).Encode(listBooks)
 	w.WriteHeader(http.StatusOK)
+
 }
 
 func postBook(w http.ResponseWriter, r *http.Request) {
@@ -135,16 +140,111 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var b Book
-	if err := json.Unmarshal(body, b); err != nil {
+	if err := json.Unmarshal(body, &b); err != nil {
 		log.Println("Error unmarshal json: ", err)
 	}
 
 	postSQL := `INSERT INTO books (name, details, author) VALUES ($1, $2, $3)`
-	if _, err := db.Exec(postSQL); err != nil {
+	if _, err := db.Exec(postSQL, b.Name, b.Details, b.Author); err != nil {
 		log.Println("Error post-request: ", err)
 		return
 	}
 
 	json.NewEncoder(w).Encode(b)
 	w.WriteHeader(http.StatusCreated)
+
+}
+
+func deleteBook(w http.ResponseWriter, id int) {
+	deleteSQL := `DELETE FROM books WHERE id = $1`
+	if _, err := db.Exec(deleteSQL, id); err != nil {
+		log.Println("Error delete-request: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+
+}
+
+func putBook(w http.ResponseWriter, r *http.Request, id int) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println("Error read request")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var b Book
+	if err := json.Unmarshal(body, &b); err != nil {
+		log.Println("Error unmarshal json: ", err)
+	}
+
+	putSQL := `UPDATE books SET name = $1 details = $2 author = $3 WHERE id = $4`
+	if _, err := db.Exec(putSQL, b.Name, b.Details, b.Author, id); err != nil {
+		log.Println("Error put-request: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+}
+
+func getIdBook(w http.ResponseWriter, id int) {
+	getSQL := `SELECT * FROM books WHERE id = $1`
+
+	row := db.QueryRow(getSQL, id)
+
+	var b Book
+	if err := row.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
+		log.Println("Error scan rows: ", err)
+		return
+	}
+
+	if err := row.Err(); err != nil {
+		log.Println("Error in rows: ", err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(b)
+	w.WriteHeader(http.StatusOK)
+}
+
+func sortBooks(w http.ResponseWriter, r *http.Request) {
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println("Error read request")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var s TypeSort
+	if err := json.Unmarshal(body, &s); err != nil {
+		log.Println("Error unmarshal json: ", err)
+	}
+
+	getSQL := `SELECT * FROM books ORDER BY $1 DESC`
+	listBooks := make([]Book, 0)
+	rows, err := db.Query(getSQL, s.NameSort)
+	if err != nil {
+		log.Println("Error select-request")
+		return
+	}
+	for rows.Next() {
+		var b Book
+		if err := rows.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
+			log.Println("Error scan rows: ", err)
+			return
+		}
+		listBooks = append(listBooks, b)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("Error in rows: ", err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(listBooks)
+	w.WriteHeader(http.StatusOK)
 }
