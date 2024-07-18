@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -19,7 +20,7 @@ type Book struct {
 }
 
 type TypeSort struct {
-	NameSort string `json:"sort"`
+	Name string `json:"name"`
 }
 
 var db *sql.DB
@@ -33,7 +34,7 @@ func main() {
 }
 
 func initDataBase() {
-	openDB := "name=storeBooks user=postgres password=durka sslmode=disable"
+	openDB := "user=postgres password=durka dbname=storeBooks sslmode=disable"
 	var err error
 	db, err = sql.Open("postgres", openDB)
 	if err != nil {
@@ -110,6 +111,7 @@ func getBooks(w http.ResponseWriter) {
 		log.Println("Error select-request")
 		return
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var b Book
 		if err := rows.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
@@ -181,7 +183,7 @@ func putBook(w http.ResponseWriter, r *http.Request, id int) {
 		log.Println("Error unmarshal json: ", err)
 	}
 
-	putSQL := `UPDATE books SET name = $1 details = $2 author = $3 WHERE id = $4`
+	putSQL := `UPDATE books SET name = $1, details = $2, author = $3 WHERE id = $4`
 	if _, err := db.Exec(putSQL, b.Name, b.Details, b.Author, id); err != nil {
 		log.Println("Error put-request: ", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -225,13 +227,15 @@ func sortBooks(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error unmarshal json: ", err)
 	}
 
-	getSQL := `SELECT * FROM books ORDER BY $1 DESC`
+	getSQL := fmt.Sprintf(`SELECT * FROM books ORDER BY %s`, s.Name)
 	listBooks := make([]Book, 0)
-	rows, err := db.Query(getSQL, s.NameSort)
+	rows, err := db.Query(getSQL)
 	if err != nil {
 		log.Println("Error select-request")
 		return
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var b Book
 		if err := rows.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
