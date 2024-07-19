@@ -1,6 +1,7 @@
 package sv
 
 import (
+	"library/authentication"
 	"library/utils/db"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ func StartServer() {
 	http.HandleFunc("/books", handleRequest)
 	http.HandleFunc("/book/", handleRequestWithId)
 	http.HandleFunc("/books/sort", handleRequestSort)
+	http.HandleFunc("/login", authentication.HandleLogin)
 	log.Println("Starting server")
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("Error starting server: ", err)
