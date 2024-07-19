@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"database/sql"
@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 
 	_ "github.com/lib/pq"
 )
@@ -23,90 +22,24 @@ type TypeSort struct {
 	Name string `json:"name"`
 }
 
-var db *sql.DB
+var DB *sql.DB
 
-func main() {
-	initDataBase()
-	defer db.Close()
-
-	startServer()
-
-}
-
-func initDataBase() {
+func InitDataBase() {
 	openDB := "user=postgres password=durka dbname=storeBooks sslmode=disable"
 	var err error
-	db, err = sql.Open("postgres", openDB)
+	DB, err = sql.Open("postgres", openDB)
 	if err != nil {
 		log.Fatal("Error open database: ", err)
 	}
-	if err = db.Ping(); err != nil {
+	if err = DB.Ping(); err != nil {
 		log.Fatal("Error connecting database: ", err)
 	}
-
 }
 
-func startServer() {
-	port := ":8080"
-	http.HandleFunc("/books", handleRequest)
-	http.HandleFunc("/book/", handleRequestWithId)
-	http.HandleFunc("/books/sort", handleRequestSort)
-	log.Println("Starting server")
-	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Fatal("Error starting server: ", err)
-	}
-
-}
-
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		getBooks(w)
-	case http.MethodPost:
-		postBook(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-}
-
-func handleRequestWithId(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Path[len("/book/"):])
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	switch r.Method {
-	case http.MethodGet:
-		getIdBook(w, id)
-	case http.MethodDelete:
-		deleteBook(w, id)
-	case http.MethodPut:
-		putBook(w, r, id)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-}
-
-func handleRequestSort(w http.ResponseWriter, r *http.Request) {
-
-	switch r.Method {
-	case http.MethodPost:
-		sortBooks(w, r)
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-}
-
-func getBooks(w http.ResponseWriter) {
+func GetBooks(w http.ResponseWriter) {
 	getSQL := `SELECT * FROM books`
 	listBooks := make([]Book, 0)
-	rows, err := db.Query(getSQL)
+	rows, err := DB.Query(getSQL)
 	if err != nil {
 		log.Println("Error select-request")
 		return
@@ -130,7 +63,7 @@ func getBooks(w http.ResponseWriter) {
 
 }
 
-func postBook(w http.ResponseWriter, r *http.Request) {
+func PostBook(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -147,7 +80,7 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	postSQL := `INSERT INTO books (name, details, author) VALUES ($1, $2, $3)`
-	if _, err := db.Exec(postSQL, b.Name, b.Details, b.Author); err != nil {
+	if _, err := DB.Exec(postSQL, b.Name, b.Details, b.Author); err != nil {
 		log.Println("Error post-request: ", err)
 		return
 	}
@@ -157,9 +90,9 @@ func postBook(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func deleteBook(w http.ResponseWriter, id int) {
+func DeleteBook(w http.ResponseWriter, id int) {
 	deleteSQL := `DELETE FROM books WHERE id = $1`
-	if _, err := db.Exec(deleteSQL, id); err != nil {
+	if _, err := DB.Exec(deleteSQL, id); err != nil {
 		log.Println("Error delete-request: ", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -169,7 +102,7 @@ func deleteBook(w http.ResponseWriter, id int) {
 
 }
 
-func putBook(w http.ResponseWriter, r *http.Request, id int) {
+func PutBook(w http.ResponseWriter, r *http.Request, id int) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("Error read request")
@@ -184,7 +117,7 @@ func putBook(w http.ResponseWriter, r *http.Request, id int) {
 	}
 
 	putSQL := `UPDATE books SET name = $1, details = $2, author = $3 WHERE id = $4`
-	if _, err := db.Exec(putSQL, b.Name, b.Details, b.Author, id); err != nil {
+	if _, err := DB.Exec(putSQL, b.Name, b.Details, b.Author, id); err != nil {
 		log.Println("Error put-request: ", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -192,10 +125,10 @@ func putBook(w http.ResponseWriter, r *http.Request, id int) {
 
 }
 
-func getIdBook(w http.ResponseWriter, id int) {
+func GetIdBook(w http.ResponseWriter, id int) {
 	getSQL := `SELECT * FROM books WHERE id = $1`
 
-	row := db.QueryRow(getSQL, id)
+	row := DB.QueryRow(getSQL, id)
 
 	var b Book
 	if err := row.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
@@ -212,7 +145,7 @@ func getIdBook(w http.ResponseWriter, id int) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func sortBooks(w http.ResponseWriter, r *http.Request) {
+func SortBooks(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -229,7 +162,7 @@ func sortBooks(w http.ResponseWriter, r *http.Request) {
 
 	getSQL := fmt.Sprintf(`SELECT * FROM books ORDER BY %s`, s.Name)
 	listBooks := make([]Book, 0)
-	rows, err := db.Query(getSQL)
+	rows, err := DB.Query(getSQL)
 	if err != nil {
 		log.Println("Error select-request")
 		return
