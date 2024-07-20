@@ -44,7 +44,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func handleRegister(w http.ResponseWriter, r *http.Request) {
+func HandleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Неверный метод", http.StatusMethodNotAllowed)
 		return

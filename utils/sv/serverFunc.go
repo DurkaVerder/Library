@@ -14,6 +14,7 @@ func StartServer() {
 	http.HandleFunc("/book/", handleRequestWithId)
 	http.HandleFunc("/books/sort", handleRequestSort)
 	http.HandleFunc("/login", authentication.HandleLogin)
+	http.HandleFunc("/register", authentication.HandleRegister)
 	log.Println("Starting server")
 	if err := http.ListenAndServe(port, nil); err != nil {
 		log.Fatal("Error starting server: ", err)
