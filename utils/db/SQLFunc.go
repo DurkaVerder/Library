@@ -185,3 +185,25 @@ func SortBooks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(listBooks)
 	w.WriteHeader(http.StatusOK)
 }
+
+func CheckLogin(login string) bool {
+	check := `SELECT login FROM users WHERE login = $1`
+	row := DB.QueryRow(check, login)
+	var existingLogin string
+	if err := row.Scan(&existingLogin); err == sql.ErrNoRows {
+		return true
+	} else if err != nil {
+		log.Println("Error checking login")
+		return false
+	}
+	return false
+}
+
+func AddUser(login, password string) {
+	addUser := `INSERT INTO users (login, password, rule) VALUES ($1, $2, default)`
+	if _, err := DB.Exec(addUser); err != nil {
+		log.Println("Error add user")
+		return
+	}
+
+}

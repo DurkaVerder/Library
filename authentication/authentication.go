@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"encoding/json"
+	"library/utils/db"
 	"library/utils/jwt"
 	"net/http"
 )
@@ -32,6 +33,36 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tokenString, err := jwt.CreateToken(user.Login, secretKey)
+	if err != nil {
+		http.Error(w, "Ошибка создания JWT", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(JWTResponse{Token: tokenString})
+
+}
+
+func handleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Неверный метод", http.StatusMethodNotAllowed)
+		return
+	}
+	var user DataUser
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Неверный формат запроса", http.StatusBadRequest)
+		return
+	}
+	if !validateDataUser(user.Login, user.Password) {
+		http.Error(w, "Неправильный формат логина или пароля", http.StatusNotAcceptable)
+		return
+	}
+	if !db.CheckLogin(user.Login) {
+		http.Error(w, "Login is busy", http.StatusInternalServerError)
+		return
+	}
+	db.AddUser(user.Login, user.Password)
 	tokenString, err := jwt.CreateToken(user.Login, secretKey)
 	if err != nil {
 		http.Error(w, "Ошибка создания JWT", http.StatusInternalServerError)
