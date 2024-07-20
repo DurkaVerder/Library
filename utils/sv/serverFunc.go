@@ -3,6 +3,7 @@ package sv
 import (
 	"library/authentication"
 	"library/utils/db"
+	"library/utils/jwt"
 	"log"
 	"net/http"
 	"strconv"
@@ -23,6 +24,8 @@ func StartServer() {
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
+	jwt.CheckJWT(w, r)
+
 	switch r.Method {
 	case http.MethodGet:
 		db.GetBooks(w)

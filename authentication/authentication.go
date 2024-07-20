@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-var secretKey = []byte("DurkaVerder0304")
-
 type DataUser struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -33,12 +31,12 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !db.CheckExistUser(user.Login, user.Password){
+	if !db.CheckExistUser(user.Login, user.Password) {
 		http.Error(w, "Users not exist", http.StatusNotFound)
 		return
 	}
-	
-	tokenString, err := jwt.CreateToken(user.Login, secretKey)
+
+	tokenString, err := jwt.CreateToken(user.Login, jwt.SecretKey)
 	if err != nil {
 		http.Error(w, "Ошибка создания JWT", http.StatusInternalServerError)
 		return
@@ -68,7 +66,7 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	db.AddUser(user.Login, user.Password)
-	tokenString, err := jwt.CreateToken(user.Login, secretKey)
+	tokenString, err := jwt.CreateToken(user.Login, jwt.SecretKey)
 	if err != nil {
 		http.Error(w, "Ошибка создания JWT", http.StatusInternalServerError)
 		return

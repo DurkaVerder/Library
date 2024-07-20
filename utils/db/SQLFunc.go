@@ -222,7 +222,7 @@ func CheckExistUser(login, password string) bool {
 	var u User
 	if err := row.Scan(&u); err == sql.ErrNoRows {
 		return false
-	} else if err != nil{
+	} else if err != nil {
 		log.Println("Error scan row")
 		return false
 	}
