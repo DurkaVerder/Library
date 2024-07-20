@@ -22,6 +22,13 @@ type TypeSort struct {
 	Name string `json:"name"`
 }
 
+type User struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+	Id       int    `json:"id"`
+	Rule     string `json:"rule"`
+}
+
 var DB *sql.DB
 
 func InitDataBase() {
@@ -206,4 +213,18 @@ func AddUser(login, password string) {
 		return
 	}
 
+}
+
+func CheckExistUser(login, password string) bool {
+	check := `SELECT * FROM users WHERE login = $1 AND password = $2`
+	row := DB.QueryRow(check, login, password)
+
+	var u User
+	if err := row.Scan(&u); err == sql.ErrNoRows {
+		return false
+	} else if err != nil{
+		log.Println("Error scan row")
+		return false
+	}
+	return true
 }
