@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"library/utils/db"
 	"library/utils/jwt"
+	"log"
 	"net/http"
 )
 
@@ -36,7 +37,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenString, err := jwt.CreateToken(user.Login, jwt.SecretKey)
+	tokenString, err := jwt.CreateToken(user.Login)
 	if err != nil {
 		http.Error(w, "Ошибка создания JWT", http.StatusInternalServerError)
 		return
@@ -57,18 +58,27 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Неверный формат запроса", http.StatusBadRequest)
 		return
 	}
+
 	if !validateDataUser(user.Login, user.Password) {
 		http.Error(w, "Неправильный формат логина или пароля", http.StatusNotAcceptable)
 		return
 	}
+
 	if !db.CheckLogin(user.Login) {
 		http.Error(w, "Login is busy", http.StatusInternalServerError)
 		return
 	}
-	db.AddUser(user.Login, user.Password)
-	tokenString, err := jwt.CreateToken(user.Login, jwt.SecretKey)
+
+	tokenString, err := jwt.CreateToken(user.Login)
+
 	if err != nil {
+		log.Println("Error create JWT")
 		http.Error(w, "Ошибка создания JWT", http.StatusInternalServerError)
+		return
+	}
+
+	if err := db.AddUser(user.Login, user.Password); err != nil {
+		http.Error(w, "Error add user", http.StatusInternalServerError)
 		return
 	}
 

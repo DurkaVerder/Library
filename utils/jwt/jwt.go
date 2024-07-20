@@ -16,16 +16,16 @@ type Claims struct {
 
 var SecretKey = []byte("DurkaVerder0304")
 
-func CreateToken(userId string, secretKey []byte) (string, error) {
+func CreateToken(userId string) (string, error) {
 	claims := Claims{
 		UserId: userId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := token.SignedString(secretKey)
+	tokenString, err := token.SignedString(SecretKey)
 	if err != nil {
 		return "", err
 	}
@@ -33,9 +33,9 @@ func CreateToken(userId string, secretKey []byte) (string, error) {
 	return tokenString, nil
 }
 
-func VerifyToken(tokenString string, secretKey []byte) (*Claims, error) {
+func VerifyToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
+		return SecretKey, nil
 	})
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func CheckJWT(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not current format token", http.StatusUnauthorized)
 		return
 	}
-	claims, err := VerifyToken(tokenString, SecretKey)
+	claims, err := VerifyToken(tokenString)
 	if err != nil {
 		http.Error(w, "Not valid JWT", http.StatusUnauthorized)
 		return

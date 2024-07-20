@@ -23,9 +23,9 @@ type TypeSort struct {
 }
 
 type User struct {
+	User_id  int    `json:"user_id"`
 	Login    string `json:"login"`
 	Password string `json:"password"`
-	Id       int    `json:"id"`
 	Rule     string `json:"rule"`
 }
 
@@ -206,24 +206,25 @@ func CheckLogin(login string) bool {
 	return false
 }
 
-func AddUser(login, password string) {
-	addUser := `INSERT INTO users (login, password, rule) VALUES ($1, $2, default)`
-	if _, err := DB.Exec(addUser); err != nil {
-		log.Println("Error add user")
-		return
+func AddUser(login, password string) error {
+	addUser := `INSERT INTO users (login, password, rule) VALUES ($1, $2, $3)`
+	if _, err := DB.Exec(addUser, login, password, "default"); err != nil {
+		log.Println("Error add user: ", err)
+		return err
 	}
+	return nil
 
 }
 
 func CheckExistUser(login, password string) bool {
-	check := `SELECT * FROM users WHERE login = $1 AND password = $2`
+	check := `SELECT user_id, login, password, rule FROM users WHERE login = $1 AND password = $2`
 	row := DB.QueryRow(check, login, password)
 
 	var u User
-	if err := row.Scan(&u); err == sql.ErrNoRows {
+	if err := row.Scan(&u.User_id, &u.Login, &u.Password, &u.Rule); err == sql.ErrNoRows {
 		return false
 	} else if err != nil {
-		log.Println("Error scan row")
+		log.Println("Error scan row: ", err)
 		return false
 	}
 	return true
