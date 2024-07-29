@@ -236,7 +236,7 @@ func HandlePaginationSort(w http.ResponseWriter, r *http.Request) {
 	genreParam := r.URL.Query().Get("genre")
 
 	limit := 10
-	
+
 	if limitParam != "" {
 		var err error
 		limit, err = strconv.Atoi(limitParam)
@@ -251,17 +251,17 @@ func HandlePaginationSort(w http.ResponseWriter, r *http.Request) {
 	selectSQL := `SELECT * FROM books WHERE details = $1 LIMIT $2`
 	if genreParam == "" {
 		selectSQL = `SELECT * FROM books LIMIT $1`
-		rows , err = DB.Query(selectSQL, limit) 
-	}	else {
-		rows , err = DB.Query(selectSQL, genreParam, limit) 
+		rows, err = DB.Query(selectSQL, limit)
+	} else {
+		rows, err = DB.Query(selectSQL, genreParam, limit)
 	}
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println("Error select-request: ", err)
-		return 
+		return
 	}
 	defer rows.Close()
-	
+
 	books := make([]Book, 0, limit)
 	for rows.Next() {
 		var b Book
