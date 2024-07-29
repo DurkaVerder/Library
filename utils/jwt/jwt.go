@@ -47,23 +47,24 @@ func VerifyToken(tokenString string) (*Claims, error) {
 	}
 }
 
-func CheckJWT(w http.ResponseWriter, r *http.Request) {
+func CheckJWT(w http.ResponseWriter, r *http.Request) int {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Not exist token", http.StatusUnauthorized)
-		return
+		return 1
 	}
 	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 	if tokenString == authHeader {
 		http.Error(w, "Not current format token", http.StatusUnauthorized)
-		return
+		return 1
 	}
 	claims, err := VerifyToken(tokenString)
 	if err != nil {
 		http.Error(w, "Not valid JWT", http.StatusUnauthorized)
-		return
+		return 1
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(claims)
+	return 0
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 
 	_ "github.com/lib/pq"
 )
@@ -228,4 +229,54 @@ func CheckExistUser(login, password string) bool {
 		return false
 	}
 	return true
+}
+
+func HandlePaginationSort(w http.ResponseWriter, r *http.Request) {
+	limitParam := r.URL.Query().Get("limit")
+	genreParam := r.URL.Query().Get("genre")
+
+	limit := 10
+	
+	if limitParam != "" {
+		var err error
+		limit, err = strconv.Atoi(limitParam)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			log.Println("Error to convert limit param: ", err)
+			return
+		}
+	}
+	var rows *sql.Rows
+	var err error
+	selectSQL := `SELECT * FROM books WHERE details = $1 LIMIT $2`
+	if genreParam == "" {
+		selectSQL = `SELECT * FROM books LIMIT $1`
+		rows , err = DB.Query(selectSQL, limit) 
+	}	else {
+		rows , err = DB.Query(selectSQL, genreParam, limit) 
+	}
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("Error select-request: ", err)
+		return 
+	}
+	defer rows.Close()
+	
+	books := make([]Book, 0, limit)
+	for rows.Next() {
+		var b Book
+		if err := rows.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
+			log.Println("Error scan rows: ", err)
+			return
+		}
+		books = append(books, b)
+	}
+	if err := rows.Err(); err != nil {
+		log.Println("Error in rows: ", err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(books)
+	w.WriteHeader(http.StatusOK)
+
 }

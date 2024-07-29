@@ -17,6 +17,8 @@ type JWTResponse struct {
 	Token string `json:"token"`
 }
 
+
+
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Неверный метод", http.StatusMethodNotAllowed)
