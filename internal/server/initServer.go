@@ -1,8 +1,8 @@
 package server
 
 import (
-	"library/internal/handler"
 	"library/internal/authentication"
+	"library/internal/handler"
 	"log"
 	"net/http"
 )
