@@ -8,9 +8,13 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"library/internal/db"
 	"library/internal/jwt"
+	"library/internal/rd"
+
+	"github.com/go-redis/redis/v8"
 )
 
 type Book struct {
@@ -43,7 +47,7 @@ func HandleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleRequestWithId(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.Atoi(r.URL.Path[len("/book/"):])
+	id, err := strconv.Atoi(r.URL.Path[len("/api/v1/book/"):])
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -214,6 +218,51 @@ func putBook(w http.ResponseWriter, r *http.Request, id int) {
 }
 
 func getIdBook(w http.ResponseWriter, id int) {
+
+	key := fmt.Sprintf("book:%d", id)
+	rdb := rd.GetRdb()
+	cash, err := rdb.Get(rdb.Context(), key).Result()
+	if err == redis.Nil {
+		book, err := requestBook(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		bookJSON, err := json.Marshal(book)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		err = rdb.Set(rd.GetCtx(), key, bookJSON, time.Hour).Err()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		cash = string(bookJSON)
+
+	} else if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var b Book
+	if err := json.Unmarshal([]byte(cash), &b); err != nil {
+		log.Println("Error unmarshal: ", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return 
+	}
+
+	json.NewEncoder(w).Encode(b)
+	w.WriteHeader(http.StatusOK)
+}
+
+func requestBook(id int) (*Book, error) {
 	getSQL := `SELECT * FROM books WHERE id = $1`
 
 	row := db.GetBD().QueryRow(getSQL, id)
@@ -221,16 +270,14 @@ func getIdBook(w http.ResponseWriter, id int) {
 	var b Book
 	if err := row.Scan(&b.Id, &b.Name, &b.Details, &b.Author); err != nil {
 		log.Println("Error scan rows: ", err)
-		return
+		return nil, err
 	}
 
 	if err := row.Err(); err != nil {
 		log.Println("Error in rows: ", err)
-		return
+		return nil, err
 	}
-
-	json.NewEncoder(w).Encode(b)
-	w.WriteHeader(http.StatusOK)
+	return &b, nil
 }
 
 func sortBooks(w http.ResponseWriter, r *http.Request) {
