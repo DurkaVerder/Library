@@ -10,7 +10,7 @@ import (
 var db *sql.DB
 
 func InitDataBase() {
-	openDB := "user=postgres password=durka dbname=storeBooks sslmode=disable"
+	openDB := "user=postgres password=durka dbname=storeBooks sslmode=disable host=host.docker.internal port=5432"
 	var err error
 	db, err = sql.Open("postgres", openDB)
 	if err != nil {
