@@ -2,6 +2,8 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
+	"library/config/cfg"
 	"log"
 
 	_ "github.com/lib/pq"
@@ -10,7 +12,8 @@ import (
 var db *sql.DB
 
 func InitDataBase() {
-	openDB := "user=postgres password=durka dbname=storeBooks sslmode=disable host=host.docker.internal port=5432"
+	conf := cfg.Cfg
+	openDB := fmt.Sprintf("user=%v password=%v dbname=%v sslmode=disable host=%v port=%v", conf.DataBase.User, conf.DataBase.Password, conf.DataBase.Dbname, conf.DataBase.Host, conf.DataBase.Port)
 	var err error
 	db, err = sql.Open("postgres", openDB)
 	if err != nil {

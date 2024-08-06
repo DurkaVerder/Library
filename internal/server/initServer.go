@@ -1,6 +1,7 @@
 package server
 
 import (
+	"library/config/cfg"
 	"library/internal/authentication"
 	"library/internal/handler"
 	"log"
@@ -8,7 +9,7 @@ import (
 )
 
 func StartServer() {
-	port := ":8080"
+	conf := cfg.Cfg
 	http.HandleFunc("/api/v1/books", handler.HandleRequest)
 	http.HandleFunc("/api/v1/books/search", handler.HandlePaginationSort)
 	http.HandleFunc("/api/v1/book/", handler.HandleRequestWithId)
@@ -17,7 +18,7 @@ func StartServer() {
 	http.HandleFunc("/api/v1/register", authentication.HandleRegister)
 
 	log.Println("Starting server")
-	if err := http.ListenAndServe(port, nil); err != nil {
+	if err := http.ListenAndServe(conf.Server.Port, nil); err != nil {
 		log.Fatal("Error starting server: ", err)
 	}
 

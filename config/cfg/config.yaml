@@ -1,0 +1,14 @@
+database:
+  user: "postgres"
+  password: "durka"
+  dbname: "storeBooks"
+  host: "host.docker.internal"
+  port: "5432"
+
+redis: 
+  address: "redis-16633.c61.us-east-1-3.ec2.redns.redis-cloud.com:16633"
+  password: "R3KdGsECUaAjAFRWgpMiAwdaQYWpRlzk"
+
+server:
+  port: ":8080"
+  environment : "development" 
